@@ -21,6 +21,7 @@
 #pragma once
 
 #include <thread>
+#include <string>
 #include <indifocuser.h>
 #include <indipropertyswitch.h>
 #include <indipropertynumber.h>
@@ -37,13 +38,14 @@ class IndiWMHFocuser : public INDI::Focuser
         INDI::PropertyNumber MotorSpeedNP    {1};
 
         std::unique_ptr<Motor> _motor;
+        std::string _deviceName;
         
         FocusDirection _dir;
         int _usPerStep;
         bool _reverse;
         bool _configLoaded = false;
 
-        volatile bool _abort;
+        volatile bool _abort = false;
         std::thread _motionThread;
 
         string _getPositionFilename();
@@ -53,7 +55,7 @@ class IndiWMHFocuser : public INDI::Focuser
         int StepperMotor(uint32_t steps, FocusDirection dir);
 
     public:
-        IndiWMHFocuser();
+        IndiWMHFocuser(const char *deviceName, std::unique_ptr<Motor> motor);
         virtual ~IndiWMHFocuser();
 
         const char *getDefaultName();

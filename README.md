@@ -1,5 +1,9 @@
 # indi-wmh-focuser
-INDI focus driver for Waveshare Stepper Motor HAT stepper motor controller board. This allows controlling a stepper motor directly from a Raspberry Pi, with no external controller necessary. Additionally, the HAT can power the Raspberry Pi, so only a single 12V power connection will be needed, instead of a 12V and a 5V connection.
+INDI focus driver for the two channels of the Waveshare Stepper Motor HAT. This allows controlling two stepper motors independently and directly from a Raspberry Pi, with no external controller necessary. Additionally, the HAT can power the Raspberry Pi, so only a single 12V power connection will be needed, instead of a 12V and a 5V connection.
+
+The driver publishes two INDI devices from one process: `Waveshare Motor HAT Focuser` (M1) and `Waveshare Motor HAT Focuser 2` (M2). Each device has independent position, speed, backlash, reverse, parking, and configuration state, and both motors may move concurrently. Existing M1 profiles retain the original device name.
+
+Dual-channel support is enabled on Raspberry Pi (including Raspberry Pi 5) and on Rock Pi 4 with the `ROCKPI`/MRAA build. The existing `ROCKPI_ARMBIAN` and `ODROID_N2` builds remain single-channel until verified M2 gpiochip mappings are supplied for those boards.
 
 Now with Rock Pi 4 and ODROID-N2/N2+ support! More SBC's with compatible 40-pin GPIO headers will be supported in time.
 

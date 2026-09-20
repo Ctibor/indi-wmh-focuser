@@ -37,6 +37,9 @@ using namespace std;
     #define M1_ENABLE_PIN 32
     #define M1_DIR_PIN 33
     #define M1_STEP_PIN 35
+    #define M2_ENABLE_PIN 7
+    #define M2_DIR_PIN 18
+    #define M2_STEP_PIN 12
 #elif ROCKPI_ARMBIAN
     #include "gpiomotor.h"
 
@@ -70,32 +73,67 @@ using namespace std;
     #define M1_DIR_PIN 13
     #define M1_STEP_CHIP GpioMotor::getPiChip()
     #define M1_STEP_PIN 19
+    #define M2_ENABLE_CHIP GpioMotor::getPiChip()
+    #define M2_ENABLE_PIN 4
+    #define M2_DIR_CHIP GpioMotor::getPiChip()
+    #define M2_DIR_PIN 24
+    #define M2_STEP_CHIP GpioMotor::getPiChip()
+    #define M2_STEP_PIN 18
 #endif
 
-#define FOCUSNAMEF "Waveshare Motor HAT Focuser"
+#define FOCUSNAMEF "Waveshare Motor HAT Focuser M1"
+#define FOCUSNAME2F "Waveshare Motor HAT Focuser M2"
 
 #define MICROSTEPPING 32 // must be set to match the state of the DIP switches on the board
 
-// We declare a pointer to indiWMHFocuser.
-std::unique_ptr<IndiWMHFocuser> indiWMHFocuser(new IndiWMHFocuser);
+namespace
+{
+std::unique_ptr<Motor> makeMotor1()
+{
+#if ROCKPI
+    return make_unique<MraaMotor>(M1_ENABLE_PIN, M1_DIR_PIN, M1_STEP_PIN);
+#else
+    return make_unique<GpioMotor>(FOCUSNAMEF,
+        M1_ENABLE_CHIP, M1_ENABLE_PIN,
+        M1_DIR_CHIP,    M1_DIR_PIN,
+        M1_STEP_CHIP,   M1_STEP_PIN);
+#endif
+}
 
-IndiWMHFocuser::IndiWMHFocuser()
+#if !ROCKPI_ARMBIAN && !ODROID_N2
+std::unique_ptr<Motor> makeMotor2()
+{
+#if ROCKPI
+    return make_unique<MraaMotor>(M2_ENABLE_PIN, M2_DIR_PIN, M2_STEP_PIN);
+#else
+    return make_unique<GpioMotor>(FOCUSNAME2F,
+        M2_ENABLE_CHIP, M2_ENABLE_PIN,
+        M2_DIR_CHIP,    M2_DIR_PIN,
+        M2_STEP_CHIP,   M2_STEP_PIN);
+#endif
+}
+#endif
+}
+
+// Constructing two DefaultDevice instances makes both focusers available from
+// one driver process.  Keep the original name for M1 so existing profiles and
+// configuration files continue to work.
+std::unique_ptr<IndiWMHFocuser> indiWMHFocuser1(
+    new IndiWMHFocuser(FOCUSNAMEF, makeMotor1()));
+
+#if !ROCKPI_ARMBIAN && !ODROID_N2
+std::unique_ptr<IndiWMHFocuser> indiWMHFocuser2(
+    new IndiWMHFocuser(FOCUSNAME2F, makeMotor2()));
+#endif
+
+IndiWMHFocuser::IndiWMHFocuser(const char *deviceName, std::unique_ptr<Motor> motor)
+    : _motor(std::move(motor)), _deviceName(deviceName)
 {
     _usPerStep = 0;
     _reverse = false;
     setVersion(VERSION_MAJOR, VERSION_MINOR);
     setSupportedConnections(CONNECTION_NONE);
     SetCapability(FOCUSER_CAN_ABS_MOVE | FOCUSER_CAN_REL_MOVE | FOCUSER_CAN_SYNC | FOCUSER_CAN_REVERSE | FOCUSER_CAN_ABORT);
-
-
-#if ROCKPI
-    _motor = make_unique<MraaMotor>(M1_ENABLE_PIN, M1_DIR_PIN, M1_STEP_PIN);
-#else
-    _motor = make_unique<GpioMotor>(FOCUSNAMEF, 
-        M1_ENABLE_CHIP, M1_ENABLE_PIN, 
-        M1_DIR_CHIP,    M1_DIR_PIN,
-        M1_STEP_CHIP,   M1_STEP_PIN);
-#endif
 }
 
 IndiWMHFocuser::~IndiWMHFocuser()
@@ -109,12 +147,12 @@ IndiWMHFocuser::~IndiWMHFocuser()
 
 const char * IndiWMHFocuser::getDefaultName()
 {
-    return FOCUSNAMEF;
+    return _deviceName.c_str();
 }
 
 bool IndiWMHFocuser::Connect()
 {
-    IDMessage(getDeviceName(), "Waveshare Motor HAT Focuser connected successfully.");
+    IDMessage(getDeviceName(), "%s connected successfully.", getDeviceName());
     return true;
 }
 
@@ -130,7 +168,7 @@ bool IndiWMHFocuser::Disconnect()
     // make sure stepper motor is released
     _motor->Disable();
 
-    IDMessage(getDeviceName(), "Waveshare Motor HAT Focuser disconnected successfully.");
+    IDMessage(getDeviceName(), "%s disconnected successfully.", getDeviceName());
     return true;
 }
 
